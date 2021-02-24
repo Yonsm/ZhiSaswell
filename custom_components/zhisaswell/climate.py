@@ -269,8 +269,8 @@ class SaswellData():
             headers = {'User-Agent': USER_AGENT}
             auth_url = AUTH_URL % (self._password, self._username)
             _LOGGER.debug("AUTH: %s", auth_url)
-            async with session.get(auth_url, headers=headers) as response:
-                text = await response.text()
+            r = await session.get(auth_url, headers=headers)
+            text = await r.text()
             #_LOGGER.info("Get token: %s", text)
             start = text.find('token:')
             if start == -1:
@@ -286,6 +286,6 @@ class SaswellData():
         url += "&timestamp=%s&token=%s" % \
             (time.strftime('%Y-%m-%d%%20%H%%3A%M%%3A%S'), self._token)
         _LOGGER.debug("URL: %s", url)
-        async with session.get(url, headers=headers) as response:
-            #_LOGGER.debug("RESPONSE: %s", response.text)
-            return await response.json(content_type=None)
+        r = await session.get(url, headers=headers)
+        #_LOGGER.debug("RESPONSE: %s", await r.text())
+        return await r.json(content_type=None)
