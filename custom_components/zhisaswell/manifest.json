@@ -1,0 +1,8 @@
+{
+	"domain": "zhisaswell",
+	"name": "Zhi Saswell Climate",
+	"documentation": "https://github.com/Yonsm/ZhiSaswell",
+	"requirements": [],
+	"dependencies": [],
+	"codeowners": ["@Yonsm"]
+}
