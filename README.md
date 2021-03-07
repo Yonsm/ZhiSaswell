@@ -1,4 +1,4 @@
-# ZhiSaswell
+# [https://github.com/Yonsm/ZhiSaswell](https://github.com/Yonsm/ZhiSaswell)
 
 Saswell Climate Component for HomeAssistant
 
@@ -10,7 +10,7 @@ Saswell Climate Component for HomeAssistant
 
 ## 2. 配置方法
 
-参见[我的 Home Assistant 配置](https://github.com/Yonsm/.homeassistant)中 [configuration.yaml](https://github.com/Yonsm/.homeassistant/blob/main/configuration.yaml)
+参见 [我的 Home Assistant 配置](https://github.com/Yonsm/.homeassistant) 中 [configuration.yaml](https://github.com/Yonsm/.homeassistant/blob/main/configuration.yaml)
 
 ```
 climate:
@@ -25,7 +25,7 @@ climate:
 
 ## 3. 使用方式
 
-![PREVIEW](PREVIEW.png)
+![PREVIEW](https://github.com/Yonsm/ZhiSaswell/blob/main/PREVIEW.png)
 
 目前仅验证了 SAS920WHL-7W-WIFI 型号可用（价格 368 RMB），如果其它型号需要支持请给我[提 issue](https://github.com/Yonsm/ZhiSaswell/issues)。
 
