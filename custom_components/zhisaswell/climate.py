@@ -86,11 +86,6 @@ class SaswellClimate(ClimateEntity):
         return self.get_value(ATTR_AVAILABLE)
 
     @property
-    def device_state_attributes(self):
-        """Return the state attributes of the device."""
-        return {'genie_deviceType': 'heater'}
-
-    @property
     def supported_features(self):
         """Return the list of supported features."""
         return SUPPORT_TARGET_TEMPERATURE | SUPPORT_PRESET_MODE
