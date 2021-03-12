@@ -33,7 +33,7 @@ climate:
 
 ## 4. 参考
 
--   [ZhiDash](https://github.com/Yonsm/ZhiDash)
--   [Yonsm.NET](https://yonsm.github.io/saswell)
--   [Hassbian.com](https://bbs.hassbian.com/thread-3387-1-1.html)
--   [Yonsm's .homeassistant](https://github.com/Yonsm/.homeassistant)
+- [ZhiDash](https://github.com/Yonsm/ZhiDash)
+- [Yonsm.NET](https://yonsm.github.io/saswell)
+- [Hassbian.com](https://bbs.hassbian.com/thread-3387-1-1.html)
+- [Yonsm's .homeassistant](https://github.com/Yonsm/.homeassistant)
