@@ -60,20 +60,25 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
 
     devices = []
     for index in range(len(saswell.devs)):
-        devices.append(SaswellClimate(saswell, index))
+        devices.append(ZhiSaswellClimate(saswell, index))
     async_add_entities(devices)
 
     saswell.devices = devices
     async_track_time_interval(hass, saswell.async_update, scan_interval)
 
 
-class SaswellClimate(ClimateEntity):
+class ZhiSaswellClimate(ClimateEntity):
     """Representation of a Saswell climate device."""
 
     def __init__(self, saswell, index):
         """Initialize the climate device."""
         self._index = index
         self._saswell = saswell
+
+    @property
+    def unique_id(self):
+        from homeassistant.util import slugify
+        return self.__class__.__name__.lower() + '.' + slugify(self.name)
 
     @property
     def name(self):
@@ -282,5 +287,5 @@ class SaswellData():
             (time.strftime('%Y-%m-%d%%20%H%%3A%M%%3A%S'), self._token)
         _LOGGER.debug("URL: %s", url)
         async with await session.get(url, headers=headers) as r:
-            #_LOGGER.debug("RESPONSE: %s", await r.text())
+            # _LOGGER.debug("RESPONSE: %s", await r.text())
             return await r.json(content_type=None)
