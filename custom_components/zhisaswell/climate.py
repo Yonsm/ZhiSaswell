@@ -230,7 +230,7 @@ class SaswellData():
                              ATTR_NAME: dev['title'],
                              ATTR_ID: dev['id']})
             self.devs = devs
-            _LOGGER.info("List device: devs=%s", self.devs)
+            _LOGGER.debug("List device: devs=%s", self.devs)
         except Exception:
             import traceback
             _LOGGER.error(traceback.format_exc())
