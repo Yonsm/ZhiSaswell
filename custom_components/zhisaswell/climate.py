@@ -1,39 +1,23 @@
-"""
-Saswell platform that offers a Saswell climate device.
-
-"""
-import asyncio
-import logging
-
 from datetime import timedelta
-
+from homeassistant.components.climate import ClimateEntity, PLATFORM_SCHEMA
+from homeassistant.components.climate.const import SUPPORT_TARGET_TEMPERATURE, SUPPORT_PRESET_MODE, ATTR_HVAC_MODE, HVAC_MODE_HEAT, HVAC_MODE_OFF, CURRENT_HVAC_HEAT, CURRENT_HVAC_OFF, ATTR_CURRENT_TEMPERATURE, ATTR_PRESET_MODE, PRESET_HOME, PRESET_AWAY
+from homeassistant.const import ATTR_ID, ATTR_NAME, CONF_USERNAME, CONF_PASSWORD, CONF_SCAN_INTERVAL, ATTR_TEMPERATURE
+from homeassistant.helpers.event import async_track_time_interval
+from homeassistant.helpers.storage import STORAGE_DIR
+import asyncio
+import homeassistant.helpers.config_validation as cv
+import logging
 import time
 import voluptuous as vol
-
-from homeassistant.components.climate import ClimateEntity, PLATFORM_SCHEMA
-from homeassistant.components.climate.const import (SUPPORT_TARGET_TEMPERATURE,
-                                                    SUPPORT_PRESET_MODE, ATTR_HVAC_MODE, HVAC_MODE_HEAT, HVAC_MODE_OFF,
-                                                    CURRENT_HVAC_HEAT, CURRENT_HVAC_OFF, ATTR_CURRENT_TEMPERATURE,
-                                                    ATTR_PRESET_MODE, PRESET_HOME, PRESET_AWAY)
-from homeassistant.const import (
-    ATTR_ID, ATTR_NAME, CONF_USERNAME, CONF_PASSWORD, CONF_SCAN_INTERVAL,
-    ATTR_TEMPERATURE)
-from homeassistant.helpers.event import async_track_time_interval
-import homeassistant.helpers.config_validation as cv
-from homeassistant.helpers.storage import STORAGE_DIR
 
 _LOGGER = logging.getLogger(__name__)
 
 DOMAIN = "zhisaswell"
 USER_AGENT = "Thermostat/3.1.0 (iPhone; iOS 11.3; Scale/3.00)"
 
-AUTH_URL = "http://api.scinan.com/oauth2/authorize?client_id=100002" \
-    "&passwd=%s&redirect_uri=http%%3A//localhost.com%%3A8080" \
-    "/testCallBack.action&response_type=token&userId=%s"
+AUTH_URL = "http://api.scinan.com/oauth2/authorize?client_id=100002&passwd=%s&redirect_uri=http%%3A//localhost.com%%3A8080/testCallBack.action&response_type=token&userId=%s"
 LIST_URL = "http://api.scinan.com/v1.0/devices/list?format=json"
-CTRL_URL = "http://api.scinan.com/v1.0/sensors/control?" \
-    "control_data=%%7B%%22value%%22%%3A%%22%s%%22%%7D&device_id=%s" \
-    "&format=json&sensor_id=%s&sensor_type=1"
+CTRL_URL = "http://api.scinan.com/v1.0/sensors/control?control_data=%%7B%%22value%%22%%3A%%22%s%%22%%7D&device_id=%s&format=json&sensor_id=%s&sensor_type=1"
 
 DEFAULT_NAME = 'Saswell'
 ATTR_AVAILABLE = 'available'
@@ -41,30 +25,20 @@ ATTR_AVAILABLE = 'available'
 PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend({
     vol.Required(CONF_USERNAME): cv.string,
     vol.Required(CONF_PASSWORD): cv.string,
-    vol.Optional(CONF_SCAN_INTERVAL, default=timedelta(seconds=300)): (
-        vol.All(cv.time_period, cv.positive_timedelta)),
+    vol.Optional(CONF_SCAN_INTERVAL, default=timedelta(seconds=300)): vol.All(cv.time_period, cv.positive_timedelta)
 })
 
 
 async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
-    """Set up the Saswell climate devices."""
-    username = config.get(CONF_USERNAME)
-    password = config.get(CONF_PASSWORD)
-    scan_interval = config.get(CONF_SCAN_INTERVAL)
-
-    saswell = SaswellData(hass, username, password)
+    saswell = SaswellData(hass, config[CONF_USERNAME], config[CONF_PASSWORD])
     await saswell.update_data()
     if not saswell.devs:
         _LOGGER.error("No sensors added.")
-        return None
+        return
 
-    devices = []
-    for index in range(len(saswell.devs)):
-        devices.append(ZhiSaswellClimate(saswell, index))
-    async_add_entities(devices)
-
-    saswell.devices = devices
-    async_track_time_interval(hass, saswell.async_update, scan_interval)
+    saswell.devices = [ZhiSaswellClimate(saswell, index) for index in range(len(saswell.devs))]
+    async_add_entities(saswell.devices)
+    async_track_time_interval(hass, saswell.async_update, config.get(CONF_SCAN_INTERVAL))
 
 
 class ZhiSaswellClimate(ClimateEntity):
@@ -150,17 +124,14 @@ class ZhiSaswellClimate(ClimateEntity):
         temperature = kwargs.get(ATTR_TEMPERATURE)
         if temperature is not None:
             await self.set_value(ATTR_TEMPERATURE, temperature)
-        # self.async_write_ha_state()
 
     async def async_set_hvac_mode(self, hvac_mode):
         """Set new target temperature."""
         await self.set_value(ATTR_HVAC_MODE, hvac_mode)
-        # self.async_write_ha_state()
 
     async def async_set_preset_mode(self, preset_mode):
         """Update preset_mode on."""
         await self.set_value(ATTR_PRESET_MODE, preset_mode)
-        # self.async_write_ha_state()
 
     def get_value(self, prop):
         """Get property value"""
@@ -172,7 +143,7 @@ class ZhiSaswellClimate(ClimateEntity):
     async def set_value(self, prop, value):
         """Set property value"""
         if await self._saswell.control(self._index, prop, value):
-            self.async_schedule_update_ha_state()
+            await self.async_update_ha_state()
 
 
 class SaswellData():
@@ -201,8 +172,7 @@ class SaswellData():
         tasks = []
         index = 0
         for device in self.devices:
-            if not old_devs or not self.devs \
-                    or old_devs[index] != self.devs[index]:
+            if not old_devs or not self.devs or old_devs[index] != self.devs[index]:
                 _LOGGER.info('%s: => %s', device.name, device.state)
                 tasks.append(device.async_update_ha_state())
 
@@ -283,8 +253,7 @@ class SaswellData():
                 file.write(self._token)
 
         headers = {'User-Agent': USER_AGENT}
-        url += "&timestamp=%s&token=%s" % \
-            (time.strftime('%Y-%m-%d%%20%H%%3A%M%%3A%S'), self._token)
+        url += "&timestamp=%s&token=%s" % (time.strftime('%Y-%m-%d%%20%H%%3A%M%%3A%S'), self._token)
         _LOGGER.debug("URL: %s", url)
         async with await session.get(url, headers=headers) as r:
             # _LOGGER.debug("RESPONSE: %s", await r.text())
