@@ -29,8 +29,8 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend({
 })
 
 
-async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
-    saswell = SaswellData(hass, config[CONF_USERNAME], config[CONF_PASSWORD])
+async def async_setup_platform(hass, conf, async_add_entities, discovery_info=None):
+    saswell = SaswellData(hass, conf[CONF_USERNAME], conf[CONF_PASSWORD])
     await saswell.update_data()
     if not saswell.devs:
         _LOGGER.error("No sensors added.")
@@ -38,7 +38,7 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
 
     saswell.devices = [ZhiSaswellClimate(saswell, index) for index in range(len(saswell.devs))]
     async_add_entities(saswell.devices)
-    async_track_time_interval(hass, saswell.async_update, config.get(CONF_SCAN_INTERVAL))
+    async_track_time_interval(hass, saswell.async_update, conf.get(CONF_SCAN_INTERVAL))
 
 
 class ZhiSaswellClimate(ClimateEntity):
