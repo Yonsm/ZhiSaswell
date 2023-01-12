@@ -4,7 +4,6 @@ from homeassistant.components.climate.const import SUPPORT_TARGET_TEMPERATURE, S
 from homeassistant.const import ATTR_ID, ATTR_NAME, CONF_USERNAME, CONF_PASSWORD, CONF_SCAN_INTERVAL, ATTR_TEMPERATURE
 from homeassistant.helpers.event import async_track_time_interval
 from homeassistant.helpers.storage import STORAGE_DIR
-import asyncio
 import homeassistant.helpers.config_validation as cv
 import logging
 import time
@@ -174,10 +173,7 @@ class SaswellData():
         for device in self.devices:
             if not old_devs or not self.devs or old_devs[index] != self.devs[index]:
                 _LOGGER.info('%s: => %s', device.name, device.state)
-                tasks.append(device.async_update_ha_state())
-
-        if tasks:
-            await asyncio.wait(tasks, loop=self._hass.loop)
+                await device.async_update_ha_state()
 
     async def update_data(self):
         """Update online data."""
