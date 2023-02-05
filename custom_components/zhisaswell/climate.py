@@ -169,9 +169,8 @@ class SaswellData():
         await self.update_data()
 
         tasks = []
-        index = 0
         for device in self.devices:
-            if not old_devs or not self.devs or old_devs[index] != self.devs[index]:
+            if not old_devs or not self.devs or old_devs[device._index] != self.devs[device._index]:
                 _LOGGER.info('%s: => %s', device.name, device.state)
                 await device.async_update_ha_state()
 
