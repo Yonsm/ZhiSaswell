@@ -209,7 +209,7 @@ class SaswellData():
                 data = '1' if value == HVAC_MODE_HEAT else '0'
             elif prop == ATTR_TEMPERATURE:
                 sensor_id = '02'
-                data = value
+                data = "%04.1f" % (float(value))
             elif prop == ATTR_PRESET_MODE:
                 sensor_id = '03'
                 data = '1' if value == PRESET_AWAY else '0'
