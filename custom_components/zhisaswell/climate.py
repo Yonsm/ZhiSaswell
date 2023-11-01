@@ -142,7 +142,7 @@ class ZhiSaswellClimate(ClimateEntity):
     async def set_value(self, prop, value):
         """Set property value"""
         if await self._saswell.control(self._index, prop, value):
-            await self.async_update_ha_state()
+            self.async_write_ha_state()
 
 
 class SaswellData():
@@ -173,7 +173,7 @@ class SaswellData():
         for device in self.devices:
             if not old_devs or not self.devs or old_devs[index] != self.devs[index]:
                 _LOGGER.info('%s: => %s', device.name, device.state)
-                await device.async_update_ha_state()
+                device.async_write_ha_state()
 
     async def update_data(self):
         """Update online data."""
@@ -237,7 +237,7 @@ class SaswellData():
             _LOGGER.debug("AUTH: %s", auth_url)
             async with await session.get(auth_url, headers=headers) as r:
                 text = await r.text()
-            #_LOGGER.info("Get token: %s", text)
+            # _LOGGER.info("Get token: %s", text)
             start = text.find('token:')
             if start == -1:
                 return None
