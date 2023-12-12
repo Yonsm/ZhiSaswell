@@ -30,7 +30,7 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(ZHI_SCHEMA | {
 
 
 async def async_setup_platform(hass, conf, async_add_entities, discovery_info=None):
-    async_add_entities([ZhiSaswellClimate(hass, conf, x) for x in conf[CONF_SENSOR_TYPES]], True)
+    async_add_entities([ZhiSaswellClimate(conf, x) for x in conf[CONF_SENSOR_TYPES]], True)
 
 
 class ZhiSaswellClimate(ZhiPollEntity, ClimateEntity):
