@@ -1,7 +1,7 @@
 
 from ..zhi.entity import ZhiPollEntity, ZHI_SCHEMA
 from homeassistant.components.climate import ClimateEntity, PLATFORM_SCHEMA
-from homeassistant.const import CONF_HOST, CONF_PORT, CONF_DEVICE, ATTR_TEMPERATURE, UnitOfTemperature
+from homeassistant.const import CONF_HOST, CONF_PORT, CONF_DEVICE, CONF_SENSOR_TYPE,  ATTR_TEMPERATURE, UnitOfTemperature
 from homeassistant.components.climate.const import ClimateEntityFeature, HVACMode, HVACAction, PRESET_HOME, PRESET_AWAY
 import homeassistant.helpers.config_validation as cv
 import voluptuous as vol
@@ -10,7 +10,6 @@ import asyncio
 import logging
 _LOGGER = logging.getLogger(__name__)
 
-CONF_SENSOR_TYPES = 'sensor_types'
 CONF_SENSOR_STATUS = 'sensor_status'
 CONF_SENSOR_HVAC_MODE = 'sensor_hvac_mode'
 CONF_SENSOR_TEMPERATURE = 'sensor_temperature'
@@ -20,8 +19,9 @@ CONF_SENSOR_PRESET_MODE = 'sensor_preset_mode'
 PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(ZHI_SCHEMA | {
     vol.Required(CONF_HOST): cv.string,
     vol.Optional(CONF_PORT, default=2000): int,
+    # Default None will take more time to initialize
     vol.Optional(CONF_DEVICE): cv.string,
-    vol.Optional(CONF_SENSOR_TYPES, default=['1']): list,
+    vol.Optional(CONF_SENSOR_TYPE, default=['1']): list,
     vol.Optional(CONF_SENSOR_STATUS, default='S00'): cv.string,
     vol.Optional(CONF_SENSOR_HVAC_MODE, default='S01'): cv.string,
     vol.Optional(CONF_SENSOR_TEMPERATURE, default='S02'): cv.string,
@@ -30,13 +30,18 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(ZHI_SCHEMA | {
 
 
 async def async_setup_platform(hass, conf, async_add_entities, discovery_info=None):
-    async_add_entities([ZhiSaswellClimate(conf, x) for x in conf[CONF_SENSOR_TYPES]], True)
+    types = conf[CONF_SENSOR_TYPE]
+    if not isinstance(types, list):
+        types = [types]
+    async_add_entities([ZhiSaswellClimate(conf, x) for x in types], True)
 
 
 class ZhiSaswellClimate(ZhiPollEntity, ClimateEntity):
 
     def __init__(self, conf, sensor_type):
         super().__init__(conf)
+        if isinstance(self._attr_name, list):
+            self._attr_name = self._attr_name[conf[CONF_SENSOR_TYPE].index(sensor_type)]
         self.host = conf[CONF_HOST]
         self.port = conf[CONF_PORT]
         self.sensor_type = sensor_type
