@@ -1,7 +1,7 @@
 
 from ..zhi.entity import ZhiPollEntity, ZHI_SCHEMA
 from homeassistant.components.climate import ClimateEntity, PLATFORM_SCHEMA
-from homeassistant.const import CONF_HOST, CONF_PORT, CONF_DEVICE, ATTR_TEMPERATURE, UnitOfTemperature
+from homeassistant.const import CONF_HOST, CONF_PORT, CONF_DEVICE, CONF_SENSOR_TYPE, ATTR_TEMPERATURE, UnitOfTemperature
 from homeassistant.components.climate.const import ClimateEntityFeature, HVACMode, HVACAction, PRESET_HOME, PRESET_AWAY
 import homeassistant.helpers.config_validation as cv
 import voluptuous as vol
@@ -10,11 +10,21 @@ import asyncio
 import logging
 _LOGGER = logging.getLogger(__name__)
 
+CONF_SENSOR_STATUS = 'sensor_status'
+CONF_SENSOR_HVAC_MODE = 'sensor_hvac_mode'
+CONF_SENSOR_TEMPERATURE = 'sensor_temperature'
+CONF_SENSOR_PRESET_MODE = 'sensor_preset_mode'
+
 
 PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(ZHI_SCHEMA | {
     vol.Required(CONF_HOST): cv.string,
     vol.Optional(CONF_PORT, default=2000): int,
-    vol.Optional(CONF_DEVICE, default='1'): cv.string,
+    vol.Optional(CONF_DEVICE): cv.string,
+    vol.Optional(CONF_SENSOR_TYPE, default='1'): cv.string,
+    vol.Optional(CONF_SENSOR_STATUS, default='00'): cv.string,
+    vol.Optional(CONF_SENSOR_HVAC_MODE, default='01'): cv.string,
+    vol.Optional(CONF_SENSOR_TEMPERATURE, default='02'): cv.string,
+    vol.Optional(CONF_SENSOR_PRESET_MODE, default='03'): cv.string,
 })
 
 
@@ -29,8 +39,15 @@ class ZhiSaswellClimate(ZhiPollEntity, ClimateEntity):
         self.hass = hass
         self.host = conf[CONF_HOST]
         self.port = conf[CONF_PORT]
-        self.device = conf[CONF_DEVICE]
-        self._attr_supported_features = ClimateEntityFeature.TARGET_TEMPERATURE | ClimateEntityFeature.PRESET_MODE
+        self.device = conf.get(CONF_DEVICE)
+        self.sensor_type = conf[CONF_SENSOR_TYPE]
+        self.sensor_status = conf[CONF_SENSOR_STATUS]
+        self.sensor_hvac_mode = conf[CONF_SENSOR_HVAC_MODE]
+        self.sensor_temperature = conf[CONF_SENSOR_TEMPERATURE]
+        self.sensor_preset_mode = conf[CONF_SENSOR_PRESET_MODE]
+        self._attr_supported_features = ClimateEntityFeature.TARGET_TEMPERATURE
+        if self.sensor_preset_mode:
+            self._attr_supported_features |= ClimateEntityFeature.PRESET_MODE
         self._attr_preset_modes = [PRESET_HOME, PRESET_AWAY]
         self._attr_hvac_modes = [HVACMode.HEAT, HVACMode.OFF]
         self._attr_temperature_unit = UnitOfTemperature.CELSIUS
@@ -39,28 +56,34 @@ class ZhiSaswellClimate(ZhiPollEntity, ClimateEntity):
     async def async_set_temperature(self, **kwargs):
         temperature = kwargs.get(ATTR_TEMPERATURE)
         if temperature is not None:
-            await self.async_command('S44', temperature)
+            await self.async_control(self.sensor_temperature, temperature)
 
     async def async_set_hvac_mode(self, hvac_mode):
-        await self.async_command('S41', '1' if hvac_mode == HVACMode.HEAT else '0')
+        await self.async_control(self.sensor_hvac_mode, '1' if hvac_mode == HVACMode.HEAT else '0')
 
     async def async_set_preset_mode(self, preset_mode):
-        # await self.async_command('S41', '1' if preset_mode == PRESET_AWAY else '0')
-        _LOGGER.warn("TODO: Not implement")
+        await self.async_control(self.sensor_preset_mode, '1' if preset_mode == PRESET_AWAY else '0')
 
-    async def async_command(self, command, value):
-        if self.data is None:
-            _LOGGER.error("Topic not ready")
+    async def async_control(self, sensor, value):
+        if self.device is None:
+            _LOGGER.error("Device not ready")
             return
         self.skip_poll = True
-        message = f'/{self.data}/{command}/{self.device}/{value}\n'
-        _LOGGER.debug("Send message: " + message)
-        await self.async_poll(message)
+        command = f'/{self.device}/S{sensor}/{self.sensor_type}/{value}\n'
+        await self.async_poll(command)
+        await self.async_update_ha_state()
 
-    async def async_poll(self, message=None):
+    async def async_poll(self, command=None):
         reader, writer = await asyncio.open_connection(self.host, self.port)
-        if message is not None:
-            writer.write(message.encode())
+        if command is not None:
+            _LOGGER.debug("Send command: " + command)
+            await reader.read(1024) # Receive dummy
+            writer.write(command.encode())
+            await asyncio.sleep(0.3)
+        if self.device is not None:
+            polling = f'/{self.device}/S{self.sensor_status}/{self.sensor_type}\n'
+            _LOGGER.debug("Send polling: " + polling)
+            writer.write(polling.encode())
         while chunk := await reader.read(1024):
             lines = chunk.decode().split('\n')
             for line in lines:
@@ -68,8 +91,13 @@ class ZhiSaswellClimate(ZhiPollEntity, ClimateEntity):
                     # _LOGGER.error("Exception topic: " + line)
                     continue
                 parts = line[1:].split('/')
-                if len(parts) < 4 or parts[1] != 'S00' or '/'.join(parts[2:-1]) != self.device:
-                    _LOGGER.debug("Skip topic: " + line)
+                if self.device is None:
+                    self.device = parts[0]
+                elif self.device != parts[0]:
+                    _LOGGER.error("Device mis-match: " + line)
+                    continue
+                if len(parts) < 4 or parts[1] != 'S' + self.sensor_status or '/'.join(parts[2:-1]) != self.sensor_type:
+                    _LOGGER.debug("Not status topic: " + line)
                     continue
                 status = parts[-1].split(',')
                 if len(status) < 11:
@@ -85,7 +113,7 @@ class ZhiSaswellClimate(ZhiPollEntity, ClimateEntity):
                 self._attr_max_temp = float(status[10])
                 writer.close()
                 await writer.wait_closed()
-                return parts[0]
+                return True
         writer.close()
         await writer.wait_closed()
         return None
