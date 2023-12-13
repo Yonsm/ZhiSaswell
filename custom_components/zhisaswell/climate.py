@@ -76,7 +76,7 @@ class ZhiSaswellClimate(ZhiPollEntity, ClimateEntity):
         self.skip_poll = True
         command = f'/{self.device}/{sensor_id}/{self.sensor_type}/{value}\n'
         await self.async_poll(command)
-        await self.async_update_ha_state()
+        self.async_write_ha_state()
 
     async def async_poll(self, command=None):
         reader, writer = await asyncio.open_connection(self.host, self.port)
